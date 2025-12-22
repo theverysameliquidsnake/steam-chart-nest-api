@@ -7,12 +7,13 @@ import {
     UploadedFile,
     UseInterceptors,
 } from '@nestjs/common';
-import { FilesService } from './files.service';
+import { FileService } from './file.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { FileDto } from './dto/file.dto';
 
 @Controller('files')
-export class FilesController {
-    constructor(private filesService: FilesService) {}
+export class FileController {
+    constructor(private fileService: FileService) {}
 
     @Post('tags')
     @UseInterceptors(FileInterceptor('file'))
@@ -30,6 +31,9 @@ export class FilesController {
         )
         file: Express.Multer.File,
     ) {
-        return this.filesService.uploadFile(file.buffer.toString());
+        const fileDto = new FileDto();
+        fileDto.name = file.originalname;
+        fileDto.content = file.buffer.toString();
+        return this.fileService.uploadFile(fileDto);
     }
 }
