@@ -1,4 +1,4 @@
-CREATE TRIGGER files_after_insert
-AFTER INSERT ON files
+CREATE TRIGGER file_after_insert
+AFTER INSERT ON file
 FOR EACH STATEMENT
 EXECUTE FUNCTION limit_files();

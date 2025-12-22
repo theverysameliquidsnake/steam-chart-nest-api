@@ -4,12 +4,12 @@ DECLARE
     row_count INTEGER;
     max_rows INTEGER := 3;
 BEGIN
-    SELECT COUNT(*) INTO row_count FROM files;
+    SELECT COUNT(*) INTO row_count FROM file;
     IF row_count > max_rows THEN
-        DELETE FROM files
+        DELETE FROM file
         WHERE id IN (
             SELECT id
-            FROM files
+            FROM file
             ORDER BY created_at ASC
             LIMIT (row_count - max_rows)
         );
