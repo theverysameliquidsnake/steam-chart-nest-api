@@ -11,11 +11,11 @@ import { FileService } from './file.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FileDto } from './dto/file.dto';
 
-@Controller('files')
+@Controller('file')
 export class FileController {
     constructor(private fileService: FileService) {}
 
-    @Post('tags')
+    @Post()
     @UseInterceptors(FileInterceptor('file'))
     uploadFile(
         @UploadedFile(
@@ -31,7 +31,7 @@ export class FileController {
         )
         file: Express.Multer.File,
     ) {
-        const fileDto = new FileDto();
+        const fileDto: FileDto = new FileDto();
         fileDto.name = file.originalname;
         fileDto.content = file.buffer.toString();
         return this.fileService.uploadFile(fileDto);

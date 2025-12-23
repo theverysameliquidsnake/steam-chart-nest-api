@@ -10,8 +10,16 @@ export class FileService {
         @InjectRepository(File) private fileRepository: Repository<File>,
     ) {}
 
-    async uploadFile(fileDto: FileDto): Promise<File> {
-        const file = new File();
+    async getLatestFile(): Promise<File | null> {
+        const latestFiles: File[] = await this.fileRepository.find({
+            order: { created_at: 'DESC' },
+            take: 1,
+        });
+        return latestFiles.length > 0 ? latestFiles[0] : null;
+    }
+
+    uploadFile(fileDto: FileDto): Promise<File> {
+        const file: File = new File();
         file.name = fileDto.name;
         file.content = fileDto.content;
         return this.fileRepository.save(file);
