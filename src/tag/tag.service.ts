@@ -17,12 +17,10 @@ export class TagService {
     async getOneTag(id: number): Promise<Tag | null> {
         const tagCache = await this.cacheManager.get<Tag>(id.toString());
         if (tagCache) {
-            console.log('redis');
             return tagCache;
         }
         const tag = await this.tagRepository.findOneBy({ id: id });
         if (tag) {
-            console.log('db');
             await this.cacheManager.set(tag.id.toString(), JSON.stringify(tag));
             return tag;
         }
