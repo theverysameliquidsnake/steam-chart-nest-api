@@ -5,17 +5,17 @@ import {
     PrimaryGeneratedColumn,
 } from 'typeorm';
 
-@Entity()
+@Entity('file')
 export class File {
-    @PrimaryGeneratedColumn()
+    @PrimaryGeneratedColumn({ name: 'id', type: 'integer' })
     id: number;
 
-    @Column({ type: 'varchar', length: 50 })
+    @Column({ name: 'name', type: 'varchar', length: 50 })
     name: string;
 
-    @Column({ type: 'text' })
+    @Column({ name: 'content', type: 'text' })
     content: string;
 
-    @CreateDateColumn()
-    created_at: Date;
+    @CreateDateColumn({ name: 'created_at' })
+    createdAt: Date;
 }

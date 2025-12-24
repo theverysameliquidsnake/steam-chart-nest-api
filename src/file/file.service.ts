@@ -12,7 +12,7 @@ export class FileService {
 
     async getLatestFile(): Promise<File | null> {
         const latestFiles: File[] = await this.fileRepository.find({
-            order: { created_at: 'DESC' },
+            order: { createdAt: 'DESC' },
             take: 1,
         });
         return latestFiles.length > 0 ? latestFiles[0] : null;

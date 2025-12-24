@@ -3,6 +3,7 @@ import { FileModule } from './file/file.module';
 import { ConfigModule } from '@nestjs/config';
 import { PostgresModule } from './postgres/postgres.module';
 import { TagModule } from './tag/tag.module';
+import { IgdbModule } from './igdb/igdb.module';
 
 @Module({
     imports: [
@@ -10,6 +11,7 @@ import { TagModule } from './tag/tag.module';
         PostgresModule,
         FileModule,
         TagModule,
+        IgdbModule,
     ],
 })
 export class AppModule {}

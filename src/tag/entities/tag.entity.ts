@@ -1,13 +1,13 @@
 import { Column, CreateDateColumn, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity()
+@Entity('steam_tag')
 export class Tag {
-    @PrimaryColumn()
+    @PrimaryColumn({ name: 'id', type: 'integer' })
     id: number;
 
-    @Column({ type: 'varchar', length: 50 })
+    @Column({ name: 'name', type: 'varchar', length: 50 })
     name: string;
 
-    @CreateDateColumn()
-    created_at: Date;
+    @CreateDateColumn({ name: 'created_at' })
+    createdAt: Date;
 }
