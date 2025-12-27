@@ -7,10 +7,7 @@ import { ConfigService } from '@nestjs/config';
     imports: [
         CacheModule.registerAsync({
             useFactory: (configService: ConfigService) => {
-                const valkeyUrl = configService.get<string>(
-                    'VALKEY_URL',
-                    'valkey://localhost:6379',
-                );
+                const valkeyUrl = configService.get<string>('VALKEY_URL', 'valkey://localhost:6379');
                 return {
                     stores: [new KeyvValkey(valkeyUrl)],
                 };

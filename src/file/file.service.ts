@@ -6,9 +6,7 @@ import { FileDto } from './dto/file.dto';
 
 @Injectable()
 export class FileService {
-    constructor(
-        @InjectRepository(File) private fileRepository: Repository<File>,
-    ) {}
+    constructor(@InjectRepository(File) private fileRepository: Repository<File>) {}
 
     async getLatestFile(): Promise<File | null> {
         const latestFiles: File[] = await this.fileRepository.find({

@@ -15,18 +15,13 @@ export class TagService {
     ) {}
 
     async getOneTag(id: number): Promise<Tag | null> {
-        const tagCache = await this.cacheManager.get<Tag>(
-            `tag:${id.toString()}`,
-        );
+        const tagCache = await this.cacheManager.get<Tag>(`tag:${id.toString()}`);
         if (tagCache) {
             return tagCache;
         }
         const tag = await this.tagRepository.findOneBy({ id: id });
         if (tag) {
-            await this.cacheManager.set(
-                `tag:${tag.id.toString()}`,
-                JSON.stringify(tag),
-            );
+            await this.cacheManager.set(`tag:${tag.id.toString()}`, JSON.stringify(tag));
             return tag;
         }
         return null;
@@ -52,9 +47,10 @@ export class TagService {
         });
         const tagToInsert: Tag[] = [];
         for (const [key, value] of tagMap) {
-            const tag = new Tag();
-            tag.id = key;
-            tag.name = value;
+            const tag = this.tagRepository.create({
+                id: key,
+                name: value,
+            });
             tagToInsert.push(tag);
         }
         return this.tagRepository.save(tagToInsert);

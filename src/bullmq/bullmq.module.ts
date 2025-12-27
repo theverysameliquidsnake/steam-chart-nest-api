@@ -5,9 +5,7 @@ import { ConfigService } from '@nestjs/config';
 @Module({
     imports: [
         BullModule.forRootAsync({
-            useFactory: (
-                configService: ConfigService,
-            ): BullRootModuleOptions => ({
+            useFactory: (configService: ConfigService): BullRootModuleOptions => ({
                 connection: {
                     host: configService.get<string>('VALKEY_HOST', 'localhost'),
                     port: configService.get<number>('VALKEY_PORT', 6379),
@@ -19,7 +17,7 @@ import { ConfigService } from '@nestjs/config';
             }),
             inject: [ConfigService],
         }),
-        BullModule.registerQueue({ name: 'steam-api' }),
+        BullModule.registerQueue({ name: 'steam-queue' }),
     ],
     exports: [BullModule],
 })
