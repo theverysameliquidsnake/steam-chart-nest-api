@@ -28,7 +28,7 @@ export class SteamService {
     }
 
     async getBatchAppIds(lastAppId?: number): Promise<SteamAppListDto> {
-        await this.logger.logToPostgres('info', `Trying to get list of apps (last id: ${lastAppId})`, undefined);
+        await this.logger.logToPostgres('info', `Trying to get list of apps (last id: ${lastAppId})`);
         let appIdListEndpoint = `https://api.steampowered.com/IStoreService/GetAppList/v1/?key=${this.configService.get('STEAM_API_KEY')}`;
         if (lastAppId) {
             appIdListEndpoint += `&last_appid=${lastAppId}`;
@@ -37,16 +37,12 @@ export class SteamService {
             this.httpService.get<SteamAppListDto>(appIdListEndpoint).pipe(
                 catchError(async (error: AxiosError) => {
                     console.error(error);
-                    await this.logger.logToPostgres(
-                        'error',
-                        `Error getting list of apps (last id: ${lastAppId})`,
-                        undefined,
-                    );
+                    await this.logger.logToPostgres('error', `Error getting list of apps (last id: ${lastAppId})`);
                     throw new Error(`Could not obtain steam app list: ${lastAppId ? lastAppId : -1}`);
                 }),
             ),
         );
-        await this.logger.logToPostgres('info', `Got list of apps (last id: ${lastAppId})`, undefined);
+        await this.logger.logToPostgres('info', `Got list of apps (last id: ${lastAppId})`);
         return data;
     }
 
@@ -57,7 +53,12 @@ export class SteamService {
             this.httpService.get<Record<number, SteamAppDetailsDto>>(appDetailsEndpoint).pipe(
                 catchError(async (error: AxiosError) => {
                     console.error(error);
-                    await this.logger.logToPostgres('error', `Error getting app details from Steam`, appId);
+                    await this.logger.logToPostgres(
+                        'error',
+                        `Error getting app details from Steam`,
+                        appId,
+                        JSON.stringify(error),
+                    );
                     throw new Error(`Could not obtain steam app details: ${appId}`);
                 }),
             ),
@@ -73,7 +74,12 @@ export class SteamService {
             this.httpService.get<SteamCmdAppDetailsDto>(appDetailsEndpoint).pipe(
                 catchError(async (error: AxiosError) => {
                     console.error(error);
-                    await this.logger.logToPostgres('error', `Error getting app details from SteamCMD`, appId);
+                    await this.logger.logToPostgres(
+                        'error',
+                        `Error getting app details from SteamCMD`,
+                        appId,
+                        JSON.stringify(error),
+                    );
                     throw new Error(`Could not obtain steamcmd app details: ${appId}`);
                 }),
             ),
@@ -82,21 +88,21 @@ export class SteamService {
         return data;
     }
 
-    async createSteamGame(appId: number): Promise<SteamGame | number> {
-        const steamAppDetails = await this.getAppDetails(appId);
-        if (steamAppDetails.success) {
-            const steamGame = this.steamGameRepository.create({
-                id: steamAppDetails.data.steam_appid,
-                name: steamAppDetails.data.name,
-                isReleased: !steamAppDetails.data.release_date.coming_soon,
-                releaseDate: !steamAppDetails.data.release_date.coming_soon
-                    ? new Date(steamAppDetails.data.release_date.date)
-                    : undefined,
-                hasAi: false,
-            });
-
+    async createSteamGame(appId: number, pullFromSteam: boolean): Promise<void> {
+        try {
             const steamCmdAppDetails = await this.getAppDetailsFromCmd(appId);
-            if (steamCmdAppDetails.data.status === 'success') {
+            const steamGame = this.steamGameRepository.create({});
+            if (steamCmdAppDetails.status === 'success') {
+                steamGame.id = parseInt(steamCmdAppDetails.data[appId].appid);
+                steamGame.name = steamCmdAppDetails.data[appId].common.name;
+                if (steamCmdAppDetails.data[appId].common?.steam_release_date) {
+                    steamGame.isReleased = true;
+                    steamGame.releaseDate = new Date(
+                        parseInt(steamCmdAppDetails.data[appId].common.steam_release_date),
+                    );
+                } else {
+                    steamGame.isReleased = false;
+                }
                 if (steamCmdAppDetails.data[appId].common?.aicontenttype) {
                     steamGame.hasAi = true;
                 }
@@ -111,10 +117,40 @@ export class SteamService {
                         steamGame.tags = tags;
                     }
                 }
+            } else {
+                await this.logger.logToPostgres(
+                    'error',
+                    `Unexpected response from SteamCMD`,
+                    appId,
+                    JSON.stringify(steamCmdAppDetails),
+                );
             }
-            return this.steamGameRepository.save(steamGame);
+
+            if (pullFromSteam) {
+                const steamAppDetails = await this.getAppDetails(appId);
+                if (steamAppDetails.success) {
+                    steamGame.id = steamAppDetails.data.steam_appid;
+                    steamGame.name = steamAppDetails.data.name;
+                    if (!steamAppDetails.data.release_date.coming_soon) {
+                        steamGame.isReleased = true;
+                        steamGame.releaseDate = new Date(steamAppDetails.data.release_date.date);
+                    } else {
+                        steamGame.isReleased = false;
+                    }
+                } else {
+                    await this.logger.logToPostgres(
+                        'error',
+                        `Unexpected response from Steam`,
+                        appId,
+                        JSON.stringify(steamAppDetails),
+                    );
+                }
+            }
+
+            await this.steamGameRepository.save(steamGame);
+        } catch (error) {
+            await this.logger.logToPostgres('error', `Unexpected error`, appId, JSON.stringify(error));
         }
-        return appId;
     }
 
     async getLastInsertedSteamAppId(): Promise<number | undefined> {

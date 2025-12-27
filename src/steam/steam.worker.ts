@@ -42,6 +42,6 @@ export class SteamWorker extends WorkerHost {
 
     async getAppDetails(job: Job): Promise<void> {
         const childJobData = job.data as SteamChildJobData;
-        await this.steamService.createSteamGame(childJobData.appId);
+        await this.steamService.createSteamGame(childJobData.appId, true);
     }
 }

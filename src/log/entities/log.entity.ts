@@ -14,6 +14,9 @@ export class Log {
     @Column({ name: 'message', type: 'text' })
     message: string;
 
+    @Column({ name: 'details', type: 'text' })
+    details: string;
+
     @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
     createdAt: Date;
 }
