@@ -9,18 +9,10 @@ export class LogService extends ConsoleLogger {
         super();
     }
 
-    async logToPostgres(
-        level: string,
-        message: string,
-        details?: string,
-        context?: string,
-        relatedTo?: number,
-    ): Promise<void> {
+    async logToPostgres(level: string, message: string, relatedTo?: number): Promise<void> {
         const log = this.logRepository.create({
             level: level,
             message: message,
-            details: details,
-            context: context,
             relatedTo: relatedTo,
         });
         await this.logRepository.save(log);

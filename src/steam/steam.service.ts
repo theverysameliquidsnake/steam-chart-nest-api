@@ -28,44 +28,57 @@ export class SteamService {
     }
 
     async getBatchAppIds(lastAppId?: number): Promise<SteamAppListDto> {
+        await this.logger.logToPostgres('info', `Trying to get list of apps (last id: ${lastAppId})`, undefined);
         let appIdListEndpoint = `https://api.steampowered.com/IStoreService/GetAppList/v1/?key=${this.configService.get('STEAM_API_KEY')}`;
         if (lastAppId) {
             appIdListEndpoint += `&last_appid=${lastAppId}`;
         }
         const { data } = await firstValueFrom(
             this.httpService.get<SteamAppListDto>(appIdListEndpoint).pipe(
-                catchError((error: AxiosError) => {
+                catchError(async (error: AxiosError) => {
                     console.error(error);
+                    await this.logger.logToPostgres(
+                        'error',
+                        `Error getting list of apps (last id: ${lastAppId})`,
+                        undefined,
+                    );
                     throw new Error(`Could not obtain steam app list: ${lastAppId ? lastAppId : -1}`);
                 }),
             ),
         );
+        await this.logger.logToPostgres('info', `Got list of apps (last id: ${lastAppId})`, undefined);
         return data;
     }
 
     async getAppDetails(appId: number): Promise<SteamAppDetailsDto> {
+        await this.logger.logToPostgres('info', `Trying to get app details from Steam`, appId);
         const appDetailsEndpoint = `https://store.steampowered.com/api/appdetails?appids=${appId}`;
         const { data } = await firstValueFrom(
             this.httpService.get<Record<number, SteamAppDetailsDto>>(appDetailsEndpoint).pipe(
-                catchError((error: AxiosError) => {
+                catchError(async (error: AxiosError) => {
                     console.error(error);
+                    await this.logger.logToPostgres('error', `Error getting app details from Steam`, appId);
                     throw new Error(`Could not obtain steam app details: ${appId}`);
                 }),
             ),
         );
+        await this.logger.logToPostgres('info', `Got app details from Steam`, appId);
         return data[appId];
     }
 
     async getAppDetailsFromCmd(appId: number): Promise<SteamCmdAppDetailsDto> {
+        await this.logger.logToPostgres('info', `Trying to get app details from SteamCMD`, appId);
         const appDetailsEndpoint = `https://api.steamcmd.net/v1/info/${appId}`;
         const { data } = await firstValueFrom(
             this.httpService.get<SteamCmdAppDetailsDto>(appDetailsEndpoint).pipe(
-                catchError((error: AxiosError) => {
+                catchError(async (error: AxiosError) => {
                     console.error(error);
+                    await this.logger.logToPostgres('error', `Error getting app details from SteamCMD`, appId);
                     throw new Error(`Could not obtain steamcmd app details: ${appId}`);
                 }),
             ),
         );
+        await this.logger.logToPostgres('info', `Got app details from SteamCMD`, appId);
         return data;
     }
 
