@@ -1,6 +1,8 @@
 import { BullModule, BullRootModuleOptions } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { BullMQController } from './bullmq.controller';
+import { BullMQService } from './bullmq.service';
 
 @Module({
     imports: [
@@ -19,6 +21,8 @@ import { ConfigService } from '@nestjs/config';
         }),
         BullModule.registerQueue({ name: 'steam-queue' }),
     ],
+    controllers: [BullMQController],
+    providers: [BullMQService],
     exports: [BullModule],
 })
 export class BullMQModule {}

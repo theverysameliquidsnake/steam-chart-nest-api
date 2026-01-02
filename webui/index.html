@@ -34,6 +34,14 @@
                 align-items: center;
                 gap: 10px;
             }
+
+            .spinner {
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                z-index: 1000;
+                min-width: 250px;
+            }
         </style>
     </head>
     <body>
@@ -52,6 +60,7 @@
                     </div>
                 </article>
             </div>
+            <div x-show="spinner.show" aria-busy="true" class="spinner"></div>
             <nav>
                 <ul>
                     <li><strong>Steam Analytics</strong></li>
@@ -59,10 +68,10 @@
                 <ul>
                     <li><a href="#" @click="openChartsPage">Charts</a></li>
                     <li><a href="#" @click="openMissedPage">Missed</a></li>
+                    <li><a href="#" @click="openQueuePage">Queue</a></li>
                     <li><a href="#" @click="openLogsPage">Logs</a></li>
-                    <li><a href="#" role="button" @click="openFileModal">File</a></li>
-                    <li><a href="#" role="button">Tags</a></li>
-                    <li><a href="#" role="button">Run</a></li>
+                    <li><a href="#" role="button" @click="openFileModal">Tags</a></li>
+                    <li><a href="#" role="button" @click="triggerUpdates">Run</a></li>
                 </ul>
             </nav>
             <div>
@@ -76,7 +85,51 @@
                         <div><canvas id="myChart4"></canvas></div>
                     </div>
                 </div>
-                <div x-show="navigation.isFileModalOpen">
+                <div x-show="navigation.isQueuePageOpen">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Id</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Related To</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="job in jobs">
+                                <tr>
+                                    <th scope="row"><span x-text="job.id"></span></th>
+                                    <th><span x-text="job.name"></span></th>
+                                    <th><span x-text="job.data.appId"></span></th>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <div x-show="navigation.isLogsPageOpen">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Id</th>
+                                <th scope="col">Level</th>
+                                <th scope="col">Related To</th>
+                                <th scope="col">Message</th>
+                                <th scope="col">Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="log in logs">
+                                <tr>
+                                    <th scope="row"><span x-text="log.id"></span></th>
+                                    <th><span x-text="log.level"></span></th>
+                                    <th><span x-text="log.relatedTo"></span></th>
+                                    <th><span x-text="log.message"></span></th>
+                                    <th><span x-text="log.createdAt"></span></th>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <div x-show="tags.showModal">
                     <dialog open>
                         <article>
                             <header>
@@ -119,12 +172,167 @@
 
                 document.addEventListener('alpine:init', () => {
                     Alpine.data('data', () => ({
+                        jobs: [],
+
+                        loadJobs() {
+                            this.showSpinner();
+                            fetch('/api/queue', {
+                                method: 'GET',
+                            }).then((response) => {
+                                if (response.status !== 200) {
+                                    this.jobs = [];
+                                    console.log(response);
+                                    throw new Error(`Unexpected response code: ${response.status}. Check console for details.`)
+                                }
+
+                                return response.json();
+                            }).then((data) => {
+                                this.jobs = data;
+                                this.showToast('Loaded waiting jobs!', 'success');
+                            }).catch((error) => {
+                                console.error(error);
+                                this.showToast(`Error: ${error}.`, 'error');
+                            }).finally(() => {
+                                this.hideSpinner();
+                            });
+                        },
+
+                        logs: [],
+
+                        loadLogs() {
+                            this.showSpinner();
+                            fetch('/api/log', {
+                                method: 'GET',
+                            }).then((response) => {
+                                if (response.status !== 200) {
+                                    this.logs = [];
+                                    console.log(response);
+                                    throw new Error(`Unexpected response code: ${response.status}. Check console for details.`)
+                                }
+
+                                return response.json();
+                            }).then((data) => {
+                                this.logs = data;
+                                this.showToast('Loaded last 50 logs!', 'success');
+                            }).catch((error) => {
+                                console.error(error);
+                                this.showToast(`Error: ${error}.`, 'error');
+                            }).finally(() => {
+                                this.hideSpinner();
+                            });
+                        },
+
                         navigation: {
                             isChartsPageOpen: true,
                             isMissedPageOpen: false,
-                            isLogsPageOpen: false,
-                            isFileModalOpen: false,
+                            isQueuePageOpen: false,
+                            isLogsPageOpen: false
                         },
+
+                        closeAll() {
+                            this.navigation.isChartsPageOpen = false;
+                            this.navigation.isMissedPageOpen = false;
+                            this.navigation.isQueuePageOpen = false;
+                            this.navigation.isLogsPageOpen = false;
+                        },
+
+                        openChartsPage() {
+                            this.closeAll();
+                            this.navigation.isChartsPageOpen = true;
+                        },
+
+                        openMissedPage() {
+                            this.closeAll();
+                            this.navigation.isMissedPageOpen = true;
+                        },
+
+                        openQueuePage() {
+                            this.closeAll();
+                            this.navigation.isQueuePageOpen = true;
+
+                            this.loadJobs();
+                        },
+
+                        openLogsPage() {
+                            this.closeAll();
+                            this.navigation.isLogsPageOpen = true;
+
+                            this.loadLogs();
+                        },
+
+                        tags: {
+                            showModal: false
+                        },
+
+                        openFileModal() {
+                            this.tags.showModal = true;
+                        },
+
+                        closeFileModal() {
+                            this.tags.showModal = false;
+
+                            if (this.$refs.fileInput) {
+                                this.$refs.fileInput.value = '';
+                            }
+                        },
+
+                        uploadFile() {
+                            const file = this.$refs.fileInput.files[0];
+                            if (file) {
+                                const formData = new FormData();
+                                formData.append('file', file);
+
+                                this.showSpinner();
+                                fetch('/api/file', {
+                                    method: 'POST',
+                                    body: formData
+                                }).then((response) => {
+                                    if (response.status !== 201) {
+                                        console.log(response);
+                                        throw new Error(`Unexpected response code: ${response.status}. Check console for details.`)
+                                    }
+
+                                    return fetch('/api/tag', {
+                                        method: 'POST'
+                                    });
+                                }).then((response) => {
+                                    if (response.status !== 201) {
+                                        console.log(response);
+                                        throw new Error(`Unexpected response code: ${response.status}. Check console for details.`)
+                                    }
+
+                                    return response.json();
+                                }).then((data) => {
+                                    this.showToast(`Added ${data.length} tags!`, 'success');
+                                    this.closeFileModal();
+                                }).catch((error) => {
+                                    console.error(error);
+                                    this.showToast(`Error: ${error}.`, 'error');
+                                }).finally(() => {
+                                    this.hideSpinner();
+                                });
+                            }
+                        },
+
+                        triggerUpdates() {
+                            this.showSpinner();
+                            fetch('/api/steam', {
+                                method: 'POST'
+                            }).then((response) => {
+                                if (response.status !== 201) {
+                                    console.log(response);
+                                    throw new Error(`Unexpected response code: ${response.status}. Check console for details.`)
+                                }
+
+                                this.showToast(`Started update!`, 'success');
+                            }).catch((error) => {
+                                console.error(error);
+                                this.showToast(`Error: ${error}.`, 'error');
+                            }).finally(() => {
+                                this.hideSpinner();
+                            });
+                        },
+
                         toast: {
                             show: false,
                             message: '',
@@ -141,60 +349,16 @@
                             }, 3000);
                         },
 
-                        openChartsPage() {
-                            this.navigation.isChartsPageOpen = true;
-                            this.navigation.isMissedPageOpen = false;
-                            this.navigation.isLogsPageOpen = false;
+                        spinner: {
+                            show: false,
                         },
 
-                        openMissedPage() {
-                            this.navigation.isChartsPageOpen = false;
-                            this.navigation.isMissedPageOpen = true;
-                            this.navigation.isLogsPageOpen = false;
+                        showSpinner() {
+                            this.spinner.show = true;
                         },
 
-                        openLogsPage() {
-                            this.navigation.isChartsPageOpen = false;
-                            this.navigation.isMissedPageOpen = false;
-                            this.navigation.isLogsPageOpen = true;
-                        },
-
-                        openFileModal() {
-                            this.navigation.isFileModalOpen = true;
-                        },
-
-                        closeFileModal() {
-                            this.navigation.isFileModalOpen = false;
-
-                            if (this.$refs.fileInput) {
-                                this.$refs.fileInput.value = '';
-                            }
-                        },
-
-                        async uploadFile() {
-                            const file = this.$refs.fileInput.files[0];
-                            if (file) {
-                                const formData = new FormData();
-                                formData.append('file', file);
-
-                                try {
-                                    const response = await fetch('/api/file', {
-                                        method: 'POST',
-                                        body: formData
-                                    });
-
-                                    if (response.status === 201) {
-                                        this.showToast('Uploaded file!', 'success');
-                                        this.closeFileModal();
-                                    } else {
-                                        console.log(response);
-                                        this.showToast(`Unexpected response code: ${response.status}. Check console for details.`, 'error');
-                                    }
-                                } catch (error) {
-                                    console.error(error);
-                                    this.showToast(`Unexpected error. Check console for details.`, 'error');
-                                }
-                            }
+                        hideSpinner() {
+                            this.spinner.show = false;
                         }
                     }));
 

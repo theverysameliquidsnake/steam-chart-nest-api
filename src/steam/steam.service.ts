@@ -147,35 +147,6 @@ export class SteamService {
                     JSON.stringify(steamAppDetails),
                 );
             }
-
-            const steamCmdAppDetails = await this.getAppDetailsFromCmd(appId);
-            if (steamCmdAppDetails.status === 'success') {
-                if (steamCmdAppDetails.data[appId].common?.aicontenttype) {
-                    steamGame.hasAi = true;
-                }
-                if (steamCmdAppDetails.data[appId].common?.store_tags) {
-                    const tags: Tag[] = [];
-                    for (const tagId of Object.values(steamCmdAppDetails.data[appId].common.store_tags)) {
-                        const tag = new Tag();
-                        tag.id = tagId;
-                        tags.push(tag);
-                    }
-                    if (tags.length > 0) {
-                        steamGame.tags = tags;
-                    }
-                }
-            } else {
-                await this.logger.logToPostgres(
-                    'error',
-                    `Unexpected response from SteamCMD`,
-                    appId,
-                    JSON.stringify(steamCmdAppDetails),
-                );
-            }
-
-            if (steamAppDetails.success) {
-                await this.steamGameRepository.save(steamGame);
-            }
         } catch (error) {
             await this.logger.logToPostgres('error', `Unexpected error`, appId, JSON.stringify(error));
         }

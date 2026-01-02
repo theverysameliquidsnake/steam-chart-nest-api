@@ -33,11 +33,11 @@ export class SteamWorker extends WorkerHost {
             data: { appId: app.appid } as SteamChildJobData,
         }));
         await this.steamQueue.addBulk(appDetailsJobs);
-        if (steamAppList?.response.have_more_results) {
+        /*if (steamAppList?.response.have_more_results) {
             await this.steamQueue.add('get-apps-list', {
                 lastAppId: steamAppList.response.last_appid,
             } as SteamParentJobData);
-        }
+        }*/
     }
 
     async getAppDetails(job: Job): Promise<void> {

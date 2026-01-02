@@ -18,4 +18,11 @@ export class LogService extends ConsoleLogger {
         });
         await this.logRepository.save(log);
     }
+
+    async getLatestLogs(): Promise<Log[]> {
+        return this.logRepository.find({
+            order: { createdAt: 'DESC' },
+            take: 50,
+        });
+    }
 }
