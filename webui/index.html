@@ -66,8 +66,7 @@
                     <li><strong>Steam Analytics</strong></li>
                 </ul>
                 <ul>
-                    <li><a href="#" @click="openChartsPage">Charts</a></li>
-                    <li><a href="#" @click="openMissedPage">Missed</a></li>
+                    <li><a href="#" @click="openChartsPage">Chart</a></li>
                     <li><a href="#" @click="openQueuePage">Queue</a></li>
                     <li><a href="#" @click="openLogsPage">Logs</a></li>
                     <li><a href="#" role="button" @click="openFileModal">Tags</a></li>
@@ -76,14 +75,7 @@
             </nav>
             <div>
                 <div x-show="navigation.isChartsPageOpen">
-                    <div class="grid">
-                        <div><canvas id="myChart1"></canvas></div>
-                        <div><canvas id="myChart2"></canvas></div>
-                    </div>
-                    <div class="grid">
-                        <div><canvas id="myChart3"></canvas></div>
-                        <div><canvas id="myChart4"></canvas></div>
-                    </div>
+                    <canvas id="chart"></canvas>
                 </div>
                 <div x-show="navigation.isQueuePageOpen">
                     <table>
@@ -147,31 +139,37 @@
                 </div>
             </div>
             <script>
-                function renderChart(elemId) {
-                    const ctx = document.getElementById(elemId);
-
-                    new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-                            datasets: [{
-                                label: '# of Votes',
-                                data: [12, 19, 3, 5, 2, 3],
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            scales: {
-                                y: {
-                                    beginAtZero: true
-                                }
-                            }
-                        }
-                    });
-                }
-
                 document.addEventListener('alpine:init', () => {
                     Alpine.data('data', () => ({
+                        chart: {
+                            tags: [],
+                            selectedTags: [],
+                            data: {}
+                        },
+
+                        renderChart() {
+                            const ctx = document.getElementById('chart');
+
+                            new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+                                    datasets: [{
+                                        label: '# of Votes',
+                                        data: [12, 19, 3, 5, 2, 3],
+                                        borderWidth: 1
+                                    }]
+                                },
+                                options: {
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true
+                                        }
+                                    }
+                                }
+                            });
+                        },
+
                         jobs: [],
 
                         loadJobs() {
@@ -223,7 +221,7 @@
                         },
 
                         navigation: {
-                            isChartsPageOpen: true,
+                            isChartsPageOpen: false,
                             isMissedPageOpen: false,
                             isQueuePageOpen: false,
                             isLogsPageOpen: false
@@ -239,6 +237,8 @@
                         openChartsPage() {
                             this.closeAll();
                             this.navigation.isChartsPageOpen = true;
+
+                            this.renderChart();
                         },
 
                         openMissedPage() {
@@ -359,13 +359,12 @@
 
                         hideSpinner() {
                             this.spinner.show = false;
+                        },
+
+                        async init() {
+                            this.openChartsPage();
                         }
                     }));
-
-                    renderChart('myChart1');
-                    renderChart('myChart2');
-                    renderChart('myChart3');
-                    renderChart('myChart4');
                 });
             </script>
         </div>
