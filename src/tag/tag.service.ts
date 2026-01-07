@@ -28,7 +28,7 @@ export class TagService {
     }
 
     getAllTags(): Promise<Tag[]> {
-        return this.tagRepository.find();
+        return this.tagRepository.find({ order: { name: 'ASC' } });
     }
 
     async createManyTags(): Promise<Tag[]> {
