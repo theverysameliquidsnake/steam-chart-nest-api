@@ -139,6 +139,25 @@
                 </div>
             </div>
             <script>
+                function constructLabels(labels) {
+                    labels.push('Soon');
+                    return labels;
+                }
+
+                function constructDataset(label, labels, data, comingSoon) {
+                    const dataset = [];
+                    for (const elem of labels) {
+                        dataset.push(data[elem] ? data[elem] : 0);
+                    }
+                    dataset.push(comingSoon);
+
+                    return {
+                        label: label,
+                        data: dataset,
+                        borderWidth: 1
+                    };
+                }
+
                 document.addEventListener('alpine:init', () => {
                     Alpine.data('data', () => ({
                         chart: {
@@ -148,25 +167,48 @@
                         },
 
                         renderChart() {
-                            const ctx = document.getElementById('chart');
+                            this.showSpinner();
+                            fetch('/api/chart', {
+                                method: 'GET',
+                            }).then((response) => {
+                                if (response.status !== 200) {
+                                    this.chart.data = {};
+                                    console.log(response);
+                                    throw new Error(`Unexpected response code: ${response.status}. Check console for details.`)
+                                }
 
-                            new Chart(ctx, {
-                                type: 'bar',
-                                data: {
-                                    labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-                                    datasets: [{
-                                        label: '# of Votes',
-                                        data: [12, 19, 3, 5, 2, 3],
-                                        borderWidth: 1
-                                    }]
-                                },
-                                options: {
-                                    scales: {
-                                        y: {
-                                            beginAtZero: true
+                                return response.json();
+                            }).then((data) => {
+                                this.chart.data = data;
+                                const labels = constructLabels(Object.keys(this.chart.data.base.years));
+                                const mainDataset = constructDataset('# of Overall Games', labels, this.chart.data.base.years, this.chart.data.base.coming_soon);
+                                const ctx = document.getElementById('chart');
+
+                                const ghostChart = Chart.getChart('chart');
+                                if (ghostChart) {
+                                    ghostChart.destroy();
+                                }
+                                
+                                new Chart(ctx, {
+                                    type: 'bar',
+                                    data: {
+                                        labels: labels,
+                                        datasets: [mainDataset]
+                                    },
+                                    options: {
+                                        scales: {
+                                            y: {
+                                                beginAtZero: true
+                                            }
                                         }
                                     }
-                                }
+                                });
+                                this.showToast('Loaded available chart data!', 'success');
+                            }).catch((error) => {
+                                console.error(error);
+                                this.showToast(`Error: ${error}.`, 'error');
+                            }).finally(() => {
+                                this.hideSpinner();
                             });
                         },
 

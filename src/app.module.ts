@@ -8,6 +8,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { LogModule } from './log/log.module';
 import { BullMQModule } from './bullmq/bullmq.module';
+import { ChartModule } from './chart/chart.module';
 
 @Module({
     imports: [
@@ -19,6 +20,7 @@ import { BullMQModule } from './bullmq/bullmq.module';
         FileModule,
         TagModule,
         SteamModule,
+        ChartModule,
     ],
 })
 export class AppModule {}
