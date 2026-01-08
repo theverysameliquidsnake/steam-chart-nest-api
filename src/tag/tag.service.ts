@@ -14,21 +14,18 @@ export class TagService {
         private fileService: FileService,
     ) {}
 
-    async getOneTag(id: number): Promise<Tag | null> {
-        const tagCache = await this.cacheManager.get<Tag>(`tag:${id.toString()}`);
-        if (tagCache) {
-            return tagCache;
+    async getAllTags(): Promise<Tag[]> {
+        const cachedTags = await this.cacheManager.get<string>('tags');
+        if (cachedTags) {
+            return JSON.parse(cachedTags) as Tag[];
         }
-        const tag = await this.tagRepository.findOneBy({ id: id });
-        if (tag) {
-            await this.cacheManager.set(`tag:${tag.id.toString()}`, JSON.stringify(tag));
-            return tag;
-        }
-        return null;
-    }
 
-    getAllTags(): Promise<Tag[]> {
-        return this.tagRepository.find({ order: { name: 'ASC' } });
+        const tags = await this.tagRepository.find({ order: { name: 'ASC' } });
+        if (tags.length > 0) {
+            await this.cacheManager.set('tags', JSON.stringify(tags));
+        }
+
+        return tags;
     }
 
     async createManyTags(): Promise<Tag[]> {

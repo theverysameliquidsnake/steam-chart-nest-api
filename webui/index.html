@@ -100,7 +100,7 @@
                         <div class="inline-checkbox-group">
                             <template x-for="tag in chart.tags">
                                 <label>
-                                    <input type="checkbox" :name="tag.name">
+                                    <input type="checkbox" :value="tag.name" x-model="chart.selectedTags">
                                     <span x-text="tag.name"></span>
                                 </label>
                             </template>
@@ -188,6 +188,15 @@
                     };
                 }
 
+                function concatUrlParams(paramName, paramValues) {
+                    const params = new URLSearchParams();
+                    paramValues.forEach((paramValue) => {
+                        return params.append(paramName, paramValue);
+                    });
+
+                    return params.toString();
+                }
+
                 document.addEventListener('alpine:init', () => {
                     Alpine.data('data', () => ({
                         chart: {
@@ -212,6 +221,7 @@
                                 this.chart.tags = data.map((tag) => {
                                     return { name: tag.name, id: tag.id };
                                 });
+                                this.chart.tags.unshift({ name: 'AI', id: 'AI' });
                                 this.showToast('Loaded tag list!', 'success');
                             }).catch((error) => {
                                 console.error(error);
@@ -223,7 +233,8 @@
 
                         renderChart() {
                             this.showSpinner();
-                            fetch('/api/chart', {
+                            const endpoint = this.chart.selectedTags.length > 0 ? `/api/chart?${concatUrlParams('tags', this.chart.selectedTags)}` : '/api/chart';
+                            fetch(endpoint, {
                                 method: 'GET',
                             }).then((response) => {
                                 if (response.status !== 200) {
@@ -236,7 +247,12 @@
                             }).then((data) => {
                                 this.chart.data = data;
                                 const labels = constructLabels(Object.keys(this.chart.data.base.years));
-                                const mainDataset = constructDataset('# of Overall Games', labels, this.chart.data.base.years, this.chart.data.base.coming_soon);
+                                const datasets = [constructDataset('# of Overall Games', labels, this.chart.data.base.years, this.chart.data.base.coming_soon)];
+                                if (this.chart.data.additional && Object.keys(this.chart.data.additional).length) {
+                                    for (const key of Object.keys(this.chart.data.additional)) {
+                                        datasets.push(constructDataset(`# of ${key} Games`, labels, this.chart.data.additional[key].years, this.chart.data.additional[key].coming_soon));
+                                    }
+                                }
                                 const ctx = document.getElementById('chart');
 
                                 const ghostChart = Chart.getChart('chart');
@@ -248,7 +264,7 @@
                                     type: 'bar',
                                     data: {
                                         labels: labels,
-                                        datasets: [mainDataset]
+                                        datasets: datasets
                                     },
                                     options: {
                                         scales: {
@@ -335,10 +351,10 @@
                             this.closeAll();
                             this.navigation.isChartsPageOpen = true;
 
-                            await this.renderTags();
                             this.chart.tags = [];
                             this.chart.selectedTags = [];
-
+                            
+                            await this.renderTags();
                             this.renderChart();
                         },
 
@@ -462,8 +478,12 @@
                             this.spinner.show = false;
                         },
 
-                        async init() {
-                            await this.openChartsPage();
+                        init() {
+                            this.openChartsPage();
+                            
+                            this.$watch('chart.selectedTags', () => {
+                                this.renderChart();
+                            });
                         }
                     }));
                 });
