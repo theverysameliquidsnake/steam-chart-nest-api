@@ -29,7 +29,10 @@ export class SteamService {
     }
 
     async getBatchAppIds(lastAppId?: number): Promise<SteamAppListDto> {
-        await this.logger.logToPostgres('info', `Trying to get list of apps (last id: ${lastAppId})`);
+        await this.logger.logToPostgres(
+            'info',
+            `Trying to get list of apps (last id: ${lastAppId ? lastAppId : 'none'})`,
+        );
         let appIdListEndpoint = `https://api.steampowered.com/IStoreService/GetAppList/v1/?key=${this.configService.get('STEAM_API_KEY')}`;
         if (lastAppId) {
             appIdListEndpoint += `&last_appid=${lastAppId}`;

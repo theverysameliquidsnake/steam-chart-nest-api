@@ -20,20 +20,7 @@ export class ChartService {
         if (cachedbaseChartData) {
             baseChartData = JSON.parse(cachedbaseChartData) as ChartData;
         } else {
-            baseChartData.years = {};
-            baseChartData.coming_soon = await this.steamGameRepository.count({ where: { isReleased: false } });
-            const byYear: { year: number; count: string }[] = await this.steamGameRepository
-                .createQueryBuilder('steam_game')
-                .select('EXTRACT(YEAR FROM steam_game.release_date)::INTEGER', 'year')
-                .addSelect('COUNT(steam_game.id)', 'count')
-                .where('steam_game.release_date IS NOT NULL')
-                .andWhere('steam_game.is_released = :isReleased', { isReleased: true })
-                .groupBy('year')
-                .orderBy('year', 'ASC')
-                .getRawMany();
-            byYear.forEach((stat) => {
-                baseChartData.years[stat.year] = parseInt(stat.count);
-            });
+            baseChartData = await this.queryBaseData();
             await this.cacheManager.set('tags:none', JSON.stringify(baseChartData), 300000);
         }
         chartDataWrapper.base = baseChartData;
@@ -54,23 +41,7 @@ export class ChartService {
                     if (cachedAiChartData) {
                         aiChartData = JSON.parse(cachedAiChartData) as ChartData;
                     } else {
-                        aiChartData.years = {};
-                        aiChartData.coming_soon = await this.steamGameRepository.count({
-                            where: { isReleased: false, hasAi: true },
-                        });
-                        const byYear: { year: number; count: string }[] = await this.steamGameRepository
-                            .createQueryBuilder('steam_game')
-                            .select('EXTRACT(YEAR FROM steam_game.release_date)::INTEGER', 'year')
-                            .addSelect('COUNT(steam_game.id)', 'count')
-                            .where('steam_game.release_date IS NOT NULL')
-                            .andWhere('steam_game.is_released = :isReleased', { isReleased: true })
-                            .andWhere('steam_game.has_ai = :hasAi', { hasAi: true })
-                            .groupBy('year')
-                            .orderBy('year', 'ASC')
-                            .getRawMany();
-                        byYear.forEach((stat) => {
-                            aiChartData.years[stat.year] = parseInt(stat.count);
-                        });
+                        aiChartData = await this.queryAiAdditionalData();
                         await this.cacheManager.set('tags:AI', JSON.stringify(aiChartData), 300000);
                     }
                     chartDataWrapper.additional['AI'] = aiChartData;
@@ -80,27 +51,7 @@ export class ChartService {
                     if (cachedTagChartData) {
                         tagChartData = JSON.parse(cachedTagChartData) as ChartData;
                     } else {
-                        tagChartData.years = {};
-                        tagChartData.coming_soon = await this.steamGameRepository
-                            .createQueryBuilder('steam_game')
-                            .innerJoin('steam_game.tags', 'tag')
-                            .where('steam_game.is_released = :isReleased', { isReleased: false })
-                            .andWhere('tag.name = :tagName', { tagName: tag })
-                            .getCount();
-                        const byYear: { year: number; count: string }[] = await this.steamGameRepository
-                            .createQueryBuilder('steam_game')
-                            .select('EXTRACT(YEAR FROM steam_game.release_date)::INTEGER', 'year')
-                            .addSelect('COUNT(steam_game.id)', 'count')
-                            .innerJoin('steam_game.tags', 'tag')
-                            .where('steam_game.release_date IS NOT NULL')
-                            .andWhere('steam_game.is_released = :isReleased', { isReleased: true })
-                            .andWhere('tag.name = :tagName', { tagName: tag })
-                            .groupBy('year')
-                            .orderBy('year', 'ASC')
-                            .getRawMany();
-                        byYear.forEach((stat) => {
-                            tagChartData.years[stat.year] = parseInt(stat.count);
-                        });
+                        tagChartData = await this.queryAdditionalTagData(tag);
                         await this.cacheManager.set(`tags:${tag}`, JSON.stringify(tagChartData), 300000);
                     }
                     chartDataWrapper.additional[tag] = tagChartData;
@@ -109,5 +60,72 @@ export class ChartService {
         }
 
         return chartDataWrapper;
+    }
+
+    private async queryBaseData(): Promise<ChartData> {
+        const baseChartData = new ChartData();
+        baseChartData.years = {};
+        baseChartData.coming_soon = await this.steamGameRepository.count({ where: { isReleased: false } });
+        const byYear: { year: number; count: string }[] = await this.steamGameRepository
+            .createQueryBuilder('steam_game')
+            .select('EXTRACT(YEAR FROM steam_game.release_date)::INTEGER', 'year')
+            .addSelect('COUNT(steam_game.id)', 'count')
+            .where('steam_game.release_date IS NOT NULL')
+            .andWhere('steam_game.is_released = :isReleased', { isReleased: true })
+            .groupBy('year')
+            .orderBy('year', 'ASC')
+            .getRawMany();
+        byYear.forEach((stat) => {
+            baseChartData.years[stat.year] = parseInt(stat.count);
+        });
+        return baseChartData;
+    }
+
+    private async queryAiAdditionalData(): Promise<ChartData> {
+        const aiChartData = new ChartData();
+        aiChartData.years = {};
+        aiChartData.coming_soon = await this.steamGameRepository.count({
+            where: { isReleased: false, hasAi: true },
+        });
+        const byYear: { year: number; count: string }[] = await this.steamGameRepository
+            .createQueryBuilder('steam_game')
+            .select('EXTRACT(YEAR FROM steam_game.release_date)::INTEGER', 'year')
+            .addSelect('COUNT(steam_game.id)', 'count')
+            .where('steam_game.release_date IS NOT NULL')
+            .andWhere('steam_game.is_released = :isReleased', { isReleased: true })
+            .andWhere('steam_game.has_ai = :hasAi', { hasAi: true })
+            .groupBy('year')
+            .orderBy('year', 'ASC')
+            .getRawMany();
+        byYear.forEach((stat) => {
+            aiChartData.years[stat.year] = parseInt(stat.count);
+        });
+        return aiChartData;
+    }
+
+    private async queryAdditionalTagData(tag: string): Promise<ChartData> {
+        const tagChartData = new ChartData();
+        tagChartData.years = {};
+        tagChartData.coming_soon = await this.steamGameRepository
+            .createQueryBuilder('steam_game')
+            .innerJoin('steam_game.tags', 'tag')
+            .where('steam_game.is_released = :isReleased', { isReleased: false })
+            .andWhere('tag.name = :tagName', { tagName: tag })
+            .getCount();
+        const byYear: { year: number; count: string }[] = await this.steamGameRepository
+            .createQueryBuilder('steam_game')
+            .select('EXTRACT(YEAR FROM steam_game.release_date)::INTEGER', 'year')
+            .addSelect('COUNT(steam_game.id)', 'count')
+            .innerJoin('steam_game.tags', 'tag')
+            .where('steam_game.release_date IS NOT NULL')
+            .andWhere('steam_game.is_released = :isReleased', { isReleased: true })
+            .andWhere('tag.name = :tagName', { tagName: tag })
+            .groupBy('year')
+            .orderBy('year', 'ASC')
+            .getRawMany();
+        byYear.forEach((stat) => {
+            tagChartData.years[stat.year] = parseInt(stat.count);
+        });
+        return tagChartData;
     }
 }
