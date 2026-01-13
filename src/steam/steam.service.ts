@@ -2,7 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { SteamAppListDto } from './dto/steam_list.dto';
 import { ConfigService } from '@nestjs/config';
-import { catchError, firstValueFrom, retry } from 'rxjs';
+import { catchError, firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 import { SteamAppDetailsDto } from './dto/steam_details.dto';
 import { Queue } from 'bullmq';
@@ -33,17 +33,16 @@ export class SteamService {
             'info',
             `Trying to get list of apps (last id: ${lastAppId ? lastAppId : 'none'})`,
         );
-        let appIdListEndpoint = `https://api.steampowered.com/IStoreService/GetAppList/v1/?key=${this.configService.get('STEAM_API_KEY')}`;
+        let appIdListEndpoint = `https://api.steampowered.com/IStoreService/GetAppList/v1/?key=${this.configService.get('STEAM_API_KEY')}&max_results=1000`;
         if (lastAppId) {
             appIdListEndpoint += `&last_appid=${lastAppId}`;
         }
         const { data } = await firstValueFrom(
             this.httpService.get<SteamAppListDto>(appIdListEndpoint).pipe(
-                retry({ count: 5, delay: 5000 }),
                 catchError(async (error: AxiosError) => {
                     console.error(error);
                     await this.logger.logToPostgres('error', `Error getting list of apps (last id: ${lastAppId})`);
-                    throw new Error(`Could not obtain steam app list: ${lastAppId ? lastAppId : -1}`);
+                    throw error;
                 }),
             ),
         );
@@ -62,7 +61,6 @@ export class SteamService {
                     httpAgent: proxyAgent,
                 })
                 .pipe(
-                    retry({ count: 5, delay: 5000 }),
                     catchError(async (error: AxiosError) => {
                         console.error(error);
                         await this.logger.logToPostgres(
@@ -71,7 +69,7 @@ export class SteamService {
                             appId,
                             JSON.stringify(error),
                         );
-                        throw new Error(`Could not obtain steam app details: ${appId}`);
+                        throw error;
                     }),
                 ),
         );
@@ -84,7 +82,6 @@ export class SteamService {
         const appDetailsEndpoint = `https://api.steamcmd.net/v1/info/${appId}`;
         const { data } = await firstValueFrom(
             this.httpService.get<SteamCmdAppDetailsDto>(appDetailsEndpoint).pipe(
-                retry({ count: 5, delay: 5000 }),
                 catchError(async (error: AxiosError) => {
                     console.error(error);
                     await this.logger.logToPostgres(
@@ -93,7 +90,7 @@ export class SteamService {
                         appId,
                         JSON.stringify(error),
                     );
-                    throw new Error(`Could not obtain steamcmd app details: ${appId}`);
+                    throw error;
                 }),
             ),
         );
@@ -140,7 +137,6 @@ export class SteamService {
                     );
                 }
 
-                /** TODO: Add falback to SteamCMD if Steam request failed */
                 await this.steamGameRepository.save(steamGame);
             } else {
                 await this.logger.logToPostgres(
@@ -152,6 +148,7 @@ export class SteamService {
             }
         } catch (error) {
             await this.logger.logToPostgres('error', `Unexpected error`, appId, JSON.stringify(error));
+            throw error;
         }
     }
 

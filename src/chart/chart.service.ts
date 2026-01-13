@@ -21,7 +21,7 @@ export class ChartService {
             baseChartData = JSON.parse(cachedbaseChartData) as ChartData;
         } else {
             baseChartData = await this.queryBaseData();
-            await this.cacheManager.set('tags:none', JSON.stringify(baseChartData), 300000);
+            await this.cacheManager.set('tags:none', JSON.stringify(baseChartData), 5 * 60 * 1000);
         }
         chartDataWrapper.base = baseChartData;
 
@@ -42,7 +42,7 @@ export class ChartService {
                         aiChartData = JSON.parse(cachedAiChartData) as ChartData;
                     } else {
                         aiChartData = await this.queryAiAdditionalData();
-                        await this.cacheManager.set('tags:AI', JSON.stringify(aiChartData), 300000);
+                        await this.cacheManager.set('tags:AI', JSON.stringify(aiChartData), 5 * 60 * 1000);
                     }
                     chartDataWrapper.additional['AI'] = aiChartData;
                 } else {
@@ -52,7 +52,7 @@ export class ChartService {
                         tagChartData = JSON.parse(cachedTagChartData) as ChartData;
                     } else {
                         tagChartData = await this.queryAdditionalTagData(tag);
-                        await this.cacheManager.set(`tags:${tag}`, JSON.stringify(tagChartData), 300000);
+                        await this.cacheManager.set(`tags:${tag}`, JSON.stringify(tagChartData), 5 * 60 * 1000);
                     }
                     chartDataWrapper.additional[tag] = tagChartData;
                 }
