@@ -14,5 +14,5 @@ export class ChartData {
     coming_soon: number;
 
     @IsNumber()
-    unknown: number;
+    unknown?: number;
 }
