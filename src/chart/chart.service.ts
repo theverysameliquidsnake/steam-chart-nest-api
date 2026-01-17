@@ -65,13 +65,17 @@ export class ChartService {
     private async queryBaseData(): Promise<ChartData> {
         const baseChartData = new ChartData();
         baseChartData.years = {};
-        baseChartData.coming_soon = await this.steamGameRepository.count({ where: { isReleased: false } });
+        // eslint-disable-next-line prettier/prettier
+        baseChartData.coming_soon = await this.steamGameRepository
+            .createQueryBuilder('steam_game')
+            .where('steam_game.release_date IS NULL')
+            .getCount();
         const byYear: { year: number; count: string }[] = await this.steamGameRepository
             .createQueryBuilder('steam_game')
             .select('EXTRACT(YEAR FROM steam_game.release_date)::INTEGER', 'year')
             .addSelect('COUNT(steam_game.id)', 'count')
             .where('steam_game.release_date IS NOT NULL')
-            .andWhere('steam_game.is_released = :isReleased', { isReleased: true })
+            //.andWhere('steam_game.is_released = :isReleased', { isReleased: true })
             .groupBy('year')
             .orderBy('year', 'ASC')
             .getRawMany();
@@ -84,15 +88,18 @@ export class ChartService {
     private async queryAiAdditionalData(): Promise<ChartData> {
         const aiChartData = new ChartData();
         aiChartData.years = {};
-        aiChartData.coming_soon = await this.steamGameRepository.count({
-            where: { isReleased: false, hasAi: true },
-        });
+        // eslint-disable-next-line prettier/prettier
+        aiChartData.coming_soon = await this.steamGameRepository
+            .createQueryBuilder('steam_game')
+            .where('steam_game.release_date IS NULL')
+            .andWhere('steam_game.has_ai = :hasAi', { hasAi: true })
+            .getCount();
         const byYear: { year: number; count: string }[] = await this.steamGameRepository
             .createQueryBuilder('steam_game')
             .select('EXTRACT(YEAR FROM steam_game.release_date)::INTEGER', 'year')
             .addSelect('COUNT(steam_game.id)', 'count')
             .where('steam_game.release_date IS NOT NULL')
-            .andWhere('steam_game.is_released = :isReleased', { isReleased: true })
+            //.andWhere('steam_game.is_released = :isReleased', { isReleased: true })
             .andWhere('steam_game.has_ai = :hasAi', { hasAi: true })
             .groupBy('year')
             .orderBy('year', 'ASC')

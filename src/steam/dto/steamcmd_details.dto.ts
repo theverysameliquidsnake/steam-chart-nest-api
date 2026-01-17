@@ -31,4 +31,7 @@ class Common {
 
     @IsString()
     steam_release_date?: string;
+
+    @IsString()
+    original_release_date?: string;
 }

@@ -6,7 +6,7 @@ import { SteamAppListDto } from './dto/steam_list.dto';
 import { SteamChildJobData } from './interfaces/steam_child_job_data.interface';
 import axios from 'axios';
 
-@Processor('steam-queue', { concurrency: 1, limiter: { max: 1, duration: 2 * 1000 } })
+@Processor('steam-queue', { concurrency: 1, limiter: { max: 1, duration: 1000 } })
 export class SteamWorker extends WorkerHost {
     constructor(
         private steamService: SteamService,
@@ -58,6 +58,7 @@ export class SteamWorker extends WorkerHost {
 
     async getAppDetails(job: Job): Promise<void> {
         const childJobData = job.data as SteamChildJobData;
-        await this.steamService.createSteamGame(childJobData.appId);
+        //await this.steamService.createSteamGame(childJobData.appId);
+        await this.steamService.createSteamCmdGame(childJobData.appId);
     }
 }
