@@ -2,7 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { SteamAppListDto } from './dto/steam_list.dto';
 import { ConfigService } from '@nestjs/config';
-import { catchError, firstValueFrom, retry } from 'rxjs';
+import { catchError, firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 import { SteamAppDetailsDto } from './dto/steam_details.dto';
 import { Queue } from 'bullmq';
@@ -29,18 +29,17 @@ export class SteamService {
     }
 
     async getBatchAppIds(lastAppId?: number): Promise<SteamAppListDto> {
-        await this.logger.logToPostgres('info', `Trying to get list of apps (last id: ${lastAppId})`);
-        let appIdListEndpoint = `https://api.steampowered.com/IStoreService/GetAppList/v1/?key=${this.configService.get('STEAM_API_KEY')}`;
+        await this.logger.logToPostgres('info', `Trying to get list of apps (last id: ${lastAppId ? lastAppId : 'none'})`);
+        let appIdListEndpoint = `https://api.steampowered.com/IStoreService/GetAppList/v1/?key=${this.configService.get('STEAM_API_KEY')}&max_results=1000`;
         if (lastAppId) {
             appIdListEndpoint += `&last_appid=${lastAppId}`;
         }
         const { data } = await firstValueFrom(
             this.httpService.get<SteamAppListDto>(appIdListEndpoint).pipe(
-                retry({ count: 5, delay: 5000 }),
                 catchError(async (error: AxiosError) => {
                     console.error(error);
                     await this.logger.logToPostgres('error', `Error getting list of apps (last id: ${lastAppId})`);
-                    throw new Error(`Could not obtain steam app list: ${lastAppId ? lastAppId : -1}`);
+                    throw error;
                 }),
             ),
         );
@@ -59,16 +58,10 @@ export class SteamService {
                     httpAgent: proxyAgent,
                 })
                 .pipe(
-                    retry({ count: 5, delay: 5000 }),
                     catchError(async (error: AxiosError) => {
                         console.error(error);
-                        await this.logger.logToPostgres(
-                            'error',
-                            `Error getting app details from Steam`,
-                            appId,
-                            JSON.stringify(error),
-                        );
-                        throw new Error(`Could not obtain steam app details: ${appId}`);
+                        await this.logger.logToPostgres('error', `Error getting app details from Steam`, appId, JSON.stringify(error));
+                        throw error;
                     }),
                 ),
         );
@@ -81,21 +74,37 @@ export class SteamService {
         const appDetailsEndpoint = `https://api.steamcmd.net/v1/info/${appId}`;
         const { data } = await firstValueFrom(
             this.httpService.get<SteamCmdAppDetailsDto>(appDetailsEndpoint).pipe(
-                retry({ count: 5, delay: 5000 }),
                 catchError(async (error: AxiosError) => {
                     console.error(error);
-                    await this.logger.logToPostgres(
-                        'error',
-                        `Error getting app details from SteamCMD`,
-                        appId,
-                        JSON.stringify(error),
-                    );
-                    throw new Error(`Could not obtain steamcmd app details: ${appId}`);
+                    await this.logger.logToPostgres('error', `Error getting app details from SteamCMD`, appId, JSON.stringify(error));
+                    throw error;
                 }),
             ),
         );
         await this.logger.logToPostgres('info', `Got app details from SteamCMD`, appId);
         return data;
+    }
+
+    async createSteamCmdGame(appId: number): Promise<void> {
+        try {
+            const steamGame = new SteamGame();
+            const steamAppDetails = await this.getAppDetailsFromCmd(appId);
+            if (steamAppDetails.status === 'success') {
+                steamGame.id = parseInt(steamAppDetails.data[appId].appid);
+                steamGame.name = steamAppDetails.data[appId].common.name;
+                steamGame.hasAi = !!steamAppDetails.data[appId].common.aicontenttype;
+                const rawDate = steamAppDetails.data[appId].common.steam_release_date ?? steamAppDetails.data[appId].common.original_release_date;
+                if (rawDate) {
+                    steamGame.releaseDate = new Date(parseInt(rawDate) * 1000);
+                }
+                await this.steamGameRepository.save(steamGame);
+            } else {
+                await this.logger.logToPostgres('error', `Unexpected response from SteamCMD`, appId, JSON.stringify(steamAppDetails));
+            }
+        } catch (error) {
+            await this.logger.logToPostgres('error', `Unexpected error`, appId, JSON.stringify(error));
+            throw error;
+        }
     }
 
     async createSteamGame(appId: number): Promise<void> {
@@ -129,26 +138,16 @@ export class SteamService {
                         }
                     }
                 } else {
-                    await this.logger.logToPostgres(
-                        'error',
-                        `Unexpected response from SteamCMD`,
-                        appId,
-                        JSON.stringify(steamCmdAppDetails),
-                    );
+                    await this.logger.logToPostgres('error', `Unexpected response from SteamCMD`, appId, JSON.stringify(steamCmdAppDetails));
                 }
 
-                /** TODO: Add falback to SteamCMD if Steam request failed */
                 await this.steamGameRepository.save(steamGame);
             } else {
-                await this.logger.logToPostgres(
-                    'error',
-                    `Unexpected response from Steam`,
-                    appId,
-                    JSON.stringify(steamAppDetails),
-                );
+                await this.logger.logToPostgres('error', `Unexpected response from Steam`, appId, JSON.stringify(steamAppDetails));
             }
         } catch (error) {
             await this.logger.logToPostgres('error', `Unexpected error`, appId, JSON.stringify(error));
+            throw error;
         }
     }
 

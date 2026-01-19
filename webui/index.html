@@ -94,6 +94,7 @@
             <div>
                 <div x-show="navigation.isChartsPageOpen">
                     <canvas id="chart"></canvas>
+                    <!--
                     <hr />
                     <details name="tagsGroup" open>
                         <summary role="button" class="outline">Tags</summary>
@@ -106,6 +107,7 @@
                             </template>
                         </div>
                     </details>
+                    -->
                 </div>
                 <div x-show="navigation.isQueuePageOpen">
                     <table>
@@ -170,7 +172,7 @@
             </div>
             <script>
                 function constructLabels(labels) {
-                    labels.push('Soon');
+                    labels.push('Unknown');
                     return labels;
                 }
 
@@ -179,7 +181,8 @@
                     for (const elem of labels) {
                         dataset.push(data[elem] ? data[elem] : 0);
                     }
-                    dataset.push(comingSoon);
+                    dataset[dataset.length - 1] = comingSoon;
+                    //dataset.push(comingSoon);
 
                     return {
                         label: label,
@@ -201,7 +204,7 @@
                     Alpine.data('data', () => ({
                         chart: {
                             tags: [],
-                            selectedTags: [],
+                            selectedTags: ['AI'],
                             data: {}
                         },
 
@@ -352,7 +355,7 @@
                             this.navigation.isChartsPageOpen = true;
 
                             this.chart.tags = [];
-                            this.chart.selectedTags = [];
+                            this.chart.selectedTags = ['AI'];
                             
                             await this.renderTags();
                             this.renderChart();
